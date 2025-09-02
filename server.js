@@ -1,7 +1,8 @@
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
-const bcrypt = require("bcryptjs");
 const session = require("express-session");
+const passport = require("passport");
+const DiscordStrategy = require("passport-discord").Strategy");
 const path = require("path");
 
 const app = express();
@@ -17,64 +18,71 @@ app.use(session({
   saveUninitialized: false
 }));
 
-// Création des tables si elles n'existent pas
+// Passport Discord
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj));
+
+passport.use(new DiscordStrategy({
+    clientID: "1364998645329690745",          // Remplace par ton Client ID Discord
+    clientSecret: "C8qVcOcBTitlZX_igaqbZjGooHfYpRbX",  // Remplace par ton Client Secret Discord
+    callbackURL: "https://ton-app.onrender.com/auth/discord/callback",
+    scope: ["identify"]
+}, (accessToken, refreshToken, profile, done) => {
+    // profile contient les infos Discord
+    return done(null, profile);
+}));
+
+// Création de la table users si tu veux stocker Discord IDs
 db.serialize(() => {
-  db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT)");
-  db.run("CREATE TABLE IF NOT EXISTS confessions (id INTEGER PRIMARY KEY, user_id INTEGER, text TEXT, FOREIGN KEY(user_id) REFERENCES users(id))");
+  db.run("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT)");
+  db.run("CREATE TABLE IF NOT EXISTS confessions (id INTEGER PRIMARY KEY, user_id TEXT, text TEXT, FOREIGN KEY(user_id) REFERENCES users(id))");
 });
 
 // Middleware pour vérifier la connexion
 function requireLogin(req, res, next) {
-  if (!req.session.userId) return res.redirect("/login");
+  if (!req.session.userId) return res.redirect("/auth/discord");
   next();
 }
 
-// Routes principales
+// ================= ROUTES ==================
+
+// Page d'accueil
 app.get("/", (req, res) => res.render("index"));
 
-// ----------------- INSCRIPTION -----------------
-app.get("/register", (req, res) => res.render("register"));
-app.post("/register", (req, res) => {
-  const { username, password } = req.body;
-  const hash = bcrypt.hashSync(password, 10);
-  db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, hash], function(err) {
-    if (err) return res.send("Erreur: " + err.message);
-    res.redirect("/login");
-  });
-});
-
-// ----------------- CONNEXION -----------------
-app.get("/login", (req, res) => res.render("login"));
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      return res.send("Identifiants invalides");
+// ----------------- Discord OAuth -----------------
+app.get("/auth/discord", passport.authenticate("discord"));
+app.get("/auth/discord/callback",
+    passport.authenticate("discord", { failureRedirect: "/" }),
+    (req, res) => {
+        // Stocke l'utilisateur dans SQLite si nouveau
+        db.run("INSERT OR IGNORE INTO users (id, username) VALUES (?, ?)", [req.user.id, req.user.username]);
+        req.session.userId = req.user.id;
+        res.redirect("/dashboard");
     }
-    req.session.userId = user.id;
-    res.redirect("/dashboard");
-  });
-});
+);
 
-// ----------------- DECONNEXION -----------------
+// Déconnexion
 app.get("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.redirect("/");
-  });
+    req.logout(() => {
+        req.session.destroy();
+        res.redirect("/");
+    });
 });
 
-// ----------------- DASHBOARD -----------------
+// ----------------- Dashboard -----------------
 app.get("/dashboard", requireLogin, (req, res) => {
   db.get("SELECT username FROM users WHERE id = ?", [req.session.userId], (err, user) => {
-    if (err || !user) return res.redirect("/login");
-
+    if (err || !user) return res.redirect("/");
     db.all("SELECT * FROM confessions WHERE user_id = ?", [req.session.userId], (err, rows) => {
       res.render("dashboard", { username: user.username, confessions: rows });
     });
   });
 });
 
-// ----------------- CONFESSIONS PUBLIQUES -----------------
+// ----------------- Confessions publiques -----------------
 app.get("/confess/:username", (req, res) => {
   res.render("confess", { username: req.params.username });
 });
@@ -89,7 +97,7 @@ app.post("/confess/:username", (req, res) => {
   });
 });
 
-// ----------------- SUPPRESSION D'UNE CONFESSION -----------------
+// ----------------- Suppression d'une confession -----------------
 app.post("/delete/:id", requireLogin, (req, res) => {
   db.run("DELETE FROM confessions WHERE id = ? AND user_id = ?", [req.params.id, req.session.userId], function(err) {
     if (err) return res.send("Erreur lors de la suppression");
@@ -97,8 +105,6 @@ app.post("/delete/:id", requireLogin, (req, res) => {
   });
 });
 
-
-// Lancer le serveur
+// ================= Lancer le serveur ==================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Serveur lancé sur le port ${PORT}`));
-

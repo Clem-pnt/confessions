@@ -6,7 +6,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Vos confessions</h2>
+    <h2>Bonjour, <%= username %> !</h2>
     <p style="text-align:center; margin-bottom:20px;">
       Partagez ce lien pour recevoir des confessions anonymes :
     </p>
@@ -23,7 +23,7 @@
           <li style="display:flex; justify-content:space-between; align-items:center;">
             <span><%= c.text %></span>
             <form method="POST" action="/delete/<%= c.id %>" style="margin:0;">
-              <button type="submit" style="background:#dc3545; margin-left:10px;">🗑️</button>
+              <button type="submit" class="delete">🗑️</button>
             </form>
           </li>
         <% }) %>
