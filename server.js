@@ -96,6 +96,20 @@ app.post("/delete/:id", requireLogin, (req, res) => {
   });
 });
 
+// ===================== API pour bot =====================
+app.get("/api/confessions/:userid", (req, res) => {
+  const token = req.headers["authorization"];
+  if (!token || token !== process.env.API_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const userId = req.params.userid;
+  db.all("SELECT text FROM confessions WHERE user_id = ?", [userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    res.json({ confessions: rows.map(r => r.text) });
+  });
+});
+
 // Serveur
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Serveur lancé sur le port ${PORT}`));
