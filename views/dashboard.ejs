@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mon Tableau de Bord</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Vos confessions</h2>
+    <p style="text-align:center; margin-bottom:20px;">
+      Partagez ce lien pour recevoir des confessions anonymes :
+    </p>
+    <p style="text-align:center; font-weight:bold; margin-bottom:20px;">
+      http://localhost:3000/confess/<%= username %>
+    </p>
+
+    <h3>📩 Confessions reçues :</h3>
+    <ul>
+      <% if (confessions.length === 0) { %>
+        <li>Aucune confession reçue pour l'instant.</li>
+      <% } else { %>
+        <% confessions.forEach(c => { %>
+          <li style="display:flex; justify-content:space-between; align-items:center;">
+            <span><%= c.text %></span>
+            <form method="POST" action="/delete/<%= c.id %>" style="margin:0;">
+              <button type="submit" style="background:#dc3545; margin-left:10px;">🗑️</button>
+            </form>
+          </li>
+        <% }) %>
+      <% } %>
+    </ul>
+
+    <p style="text-align:center; margin-top:20px;">
+      <a href="/logout">Se déconnecter</a>
+    </p>
+  </div>
+</body>
+</html>

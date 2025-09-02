@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Confesser à <%= username %></title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Écris une confession anonyme pour <%= username %></h2>
+    <form method="POST" action="/confess/<%= username %>">
+      <textarea name="text" rows="5" placeholder="Ta confession..." required></textarea>
+      <button type="submit">Envoyer</button>
+    </form>
+  </div>
+</body>
+</html>
