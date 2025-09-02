@@ -2,7 +2,7 @@ const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const session = require("express-session");
 const passport = require("passport");
-const DiscordStrategy = require("passport-discord").Strategy");
+const DiscordStrategy = require("passport-discord").Strategy;
 const path = require("path");
 
 const app = express();
